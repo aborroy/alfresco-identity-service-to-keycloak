@@ -1,0 +1,158 @@
+services:
+    alfresco:
+        image: alfresco/alfresco-content-repository-community:${ALFRESCO_CE_TAG}
+        depends_on:
+            - alfresco-identity-service
+            - postgres
+        environment:
+            JAVA_TOOL_OPTIONS: >-
+                -Dencryption.keystore.type=JCEKS
+                -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+                -Dencryption.keyAlgorithm=DESede
+                -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
+                -Dmetadata-keystore.password=mp6yc0UD9e
+                -Dmetadata-keystore.aliases=metadata
+                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+                -Dmetadata-keystore.metadata.algorithm=DESede
+            JAVA_OPTS : >-
+                -Ddb.username=alfresco
+                -Ddb.password=alfresco
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.url=jdbc:postgresql://postgres:5432/alfresco
+                -Dsolr.host=solr6
+                -Dsolr.port=8983
+                -Dsolr.secureComms=secret
+                -Dsolr.sharedSecret=secret
+                -Dsolr.baseUrl=/solr
+                -Dindex.subsystem.name=solr6
+                -Dalfresco.host=${SERVER_NAME}
+                -Dalfresco.port=8080
+                -Dalfresco.protocol=http
+                -Dshare.host=${SERVER_NAME}
+                -Dshare.port=8080
+                -Dshare.protocol=http
+                -Daos.baseUrlOverwrite=http://${SERVER_NAME}/alfresco/aos
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=DOCKER_COMPOSE
+                -Dcsrf.filter.enabled=false
+                -Dopencmis.server.override=true
+                -Dopencmis.server.value=http://${SERVER_NAME}:8080
+                -DlocalTransform.core-aio.url=http://transform-core-aio:8090/
+                -Dcsrf.filter.enabled=false
+                -Dalfresco.restApi.basicAuthScheme=true
+                -Dauthentication.protection.enabled=false
+                -XX:+UseG1GC -XX:+UseStringDeduplication
+                -Dgoogledocs.enabled=false
+                -XX:MinRAMPercentage=50 -XX:MaxRAMPercentage=80
+                -Dauthentication.chain=identity-service1:identity-service
+                -Didentity-service.enable-basic-auth=true
+                -Didentity-service.auth-server-url=http://${HOST_IP}:8080
+                -Didentity-service.realm=alfresco
+                -Didentity-service.resource=alfresco
+
+    transform-core-aio:
+        image: alfresco/alfresco-transform-core-aio:${TRANSFORM_ENGINE_TAG}
+        environment:
+            JAVA_OPTS: " -XX:MinRAMPercentage=50 -XX:MaxRAMPercentage=80"
+
+    share:
+        image: alfresco/alfresco-share:${SHARE_TAG}
+        environment:
+            REPO_HOST: "alfresco"
+            REPO_PORT: "8080"
+            CSRF_FILTER_REFERER: "http://localhost:8080/.*"
+            CSRF_FILTER_ORIGIN: "http://localhost:8080"
+            JAVA_OPTS: "
+                -Xms1744m -Xmx1744m
+                -Dalfresco.context=alfresco
+                -Dalfresco.protocol=http
+                -XX:MinRAMPercentage=50 -XX:MaxRAMPercentage=80
+                -Daims.enabled=true
+                -Daims.realm=alfresco
+                -Daims.resource=alfresco
+                -Daims.authServerUrl=http://${HOST_IP}:8080
+                "
+        depends_on:
+            alfresco-identity-service:
+                condition: service_healthy
+
+    postgres:
+        image: postgres:${POSTGRES_TAG}
+        mem_limit: 1872m
+        environment:
+            - POSTGRES_PASSWORD=alfresco
+            - POSTGRES_USER=alfresco
+            - POSTGRES_DB=alfresco
+        command: "
+            postgres
+              -c max_connections=200
+              -c logging_collector=on
+              -c log_min_messages=LOG
+              -c log_directory=/var/log/postgresql"
+        ports:
+            - 5432:5432
+
+    solr6:
+        image: alfresco/alfresco-search-services:${SEARCH_CE_TAG}
+        environment:
+          SOLR_ALFRESCO_HOST: "alfresco"
+          SOLR_ALFRESCO_PORT: "8080"
+          SOLR_SOLR_HOST: "solr6"
+          SOLR_SOLR_PORT: "8983"
+          SOLR_CREATE_ALFRESCO_DEFAULTS: "alfresco,archive"
+          ALFRESCO_SECURE_COMMS: "secret"
+          JAVA_TOOL_OPTIONS: >-
+            -Dalfresco.secureComms.secret=secret
+
+    activemq:
+        image: alfresco/alfresco-activemq:${ACTIVEMQ_TAG}
+        ports:
+            - 8161:8161 # Web Console
+            - 61616:61616 # OpenWire
+
+    content-app:
+        image: alfresco/alfresco-content-app:${ACA_TAG}
+        environment:
+            APP_CONFIG_AUTH_TYPE: "OAUTH"
+            APP_CONFIG_OAUTH2_HOST: "http://localhost:8080/realms/alfresco"
+            APP_CONFIG_OAUTH2_CLIENTID: "alfresco"
+            APP_CONFIG_OAUTH2_IMPLICIT_FLOW: "\"true\""
+            APP_CONFIG_OAUTH2_SILENT_LOGIN: "\"true\""
+            APP_CONFIG_OAUTH2_REDIRECT_LOGIN: "/content-app/"
+            APP_CONFIG_OAUTH2_REDIRECT_LOGOUT: "/content-app/"
+            APP_CONFIG_OAUTH2_REDIRECT_SILENT_IFRAME_URI: "http://localhost:8080/content-app/assets/silent-refresh.html"
+        depends_on:
+            alfresco-identity-service:
+                condition: service_healthy
+
+    alfresco-identity-service:
+        image: quay.io/keycloak/keycloak:${KEYCLOAK_TAG}
+        environment:
+          - KEYCLOAK_ADMIN=admin
+          - KEYCLOAK_ADMIN_PASSWORD=admin
+          - DB_VENDOR=h2
+        command: >-
+            start --import-realm --hostname=$HOST_IP --hostname-port=8080 
+            --http-enabled=true --hostname-strict-https=false
+        volumes:
+          - ./config/alfresco-realm.json:/opt/keycloak/data/import/alfresco-realm.json
+        healthcheck:
+            test:
+              [
+                "CMD-SHELL",
+                'exec 3<>/dev/tcp/localhost/8080; echo -e "GET /health/ready HTTP/1.1\nhost: localhost:8080\n" >&3; timeout --preserve-status 1 cat <&3 | grep -m 1 status | grep -m 1 UP; ERROR=$?; exec 3<&-; exec 3>&-; exit $ERROR'
+              ]
+            interval: 30s
+            timeout: 5s
+            retries: 20            
+
+    proxy:
+        image: nginx:stable-alpine
+        depends_on:
+            - alfresco
+            - share
+            - content-app
+        volumes:
+            - ./config/nginx.conf:/etc/nginx/nginx.conf
+        ports:
+            - 8080:8080

@@ -69,6 +69,31 @@ Both Docker Compose templates ([alfresco-community-aims](alfresco-community-aims
 * `config/nginx.conf` includes configuration for the NGINX Web Proxy
 * `.env` includes Docker Image tag names and a HOST_IP variable (remember to add your local computer IP to this property before running the project)
 
+**alfresco-community-keycloak-ui**
+
+The difference with the previous `compose.yaml` is that the UI applications (Share and ACA) are also configured to use Keycloak authentication.
+
+Docker Compose template include following files:
+
+```
+.
+├── .env
+├── config
+│   ├── alfresco-realm.json
+│   └── nginx.conf
+└── compose.yaml
+```
+
+* `docker-compose.yml` is a regular ACS Docker Compose, including Alfresco Identity Service or Keycloak for Authentication
+* `config/alfresco-realm.json` includes a sample configuration for Alfresco Identity Service or Keycloak, despite you can create your own configuration using the Keycloak Admin Web Page
+* `config/nginx.conf` includes configuration for the NGINX Web Proxy
+* `.env` includes Docker Image tag names and a HOST_IP variable (remember to add your local computer IP to this property before running the project)
+
+>> Note that service urls are different from the previous ones, they are described in section "Service URLs for UIs"
+
+>> In addition, from ACA 4.4.x, Keycloak urls are required to use HTTPs. This is why ACA 4.3.0 is used in the sample.
+
+
 ## Using
 
 >> Note: Add your local computer IP to `.env` variable HOST_IP before running Docker Compose.
@@ -122,6 +147,54 @@ Groups
 
 * admin
 * testgroup
+
+
+## Service URLs for UIs
+
+http://localhost:8080/content-app/
+
+ACA
+
+* user: admin
+* password: admin
+
+http://localhost:8080/share
+
+Share
+
+* user: admin
+* password: admin
+
+http://localhost:8080/alfresco
+
+Alfresco Repository
+
+* user: admin
+* password: admin
+
+http://${HOST_IP}:8080
+
+Keycloak
+
+* user: admin
+* password: admin
+
+**Default configuration for Alfresco Identity Service or Keycloak**
+
+Users
+
+* admin / admin
+* test / admin
+
+Roles
+* test_role
+* default-roles-alfresco
+
+Groups
+
+* admin
+* testgroup
+
 
 ## Additional resources
 
