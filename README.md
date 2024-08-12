@@ -217,6 +217,34 @@ identity-service.credentials.secret=
 identity-service.credentials.provider=
 ```
 
+These are the properties available for Share Web App ([`share-config.properties`](https://github.com/Alfresco/alfresco-community-share/blob/release/23.2/share/src/main/resources/share-config.properties)):
+
+```
+aims.enabled=false
+aims.realm=
+aims.resource=
+aims.authServerUrl=
+aims.sslRequired=external
+aims.publicClient=true
+aims.autodetectBearerOnly=
+aims.alwaysRefreshToken=
+aims.principalAttribute=sub
+aims.enableBasicAuth=
+aims.secret=
+```
+
+And for the Alfresco Content Application, use following [environment variables](https://github.com/Alfresco/alfresco-content-app/blob/4.3.0/docs/getting-started/docker.md?plain=1#L74):
+
+```
+APP_CONFIG_OAUTH2_HOST                      
+APP_CONFIG_OAUTH2_CLIENTID                  
+APP_CONFIG_OAUTH2_IMPLICIT_FLOW             
+APP_CONFIG_OAUTH2_SILENT_LOGIN              
+APP_CONFIG_OAUTH2_REDIRECT_SILENT_IFRAME_URI
+APP_CONFIG_OAUTH2_REDIRECT_LOGIN            
+APP_CONFIG_OAUTH2_REDIRECT_LOGOUT           
+```
+
 Tutorials on how to configure different Authetication Subsystems are available in:
 
 * https://docs.alfresco.com/identity-service/latest/tutorial/sso/saml/
